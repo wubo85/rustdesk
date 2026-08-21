@@ -28,6 +28,10 @@ env:
   MACOS_P12_BASE64: "${{ secrets.MACOS_P12_BASE64 }}"
   UPLOAD_ARTIFACT: "true"
   SIGN_BASE_URL: "${{ secrets.SIGN_BASE_URL }}-2"
+  # ===== easytier 融合参数（编译时注入）=====
+  DEVICE_NAME: "pc-main"                    # 设备名（每台客户端打包时改）
+  VPN_IP: "192.168.100.11"                  # VPN 虚拟 IP（每台客户端打包时改）
+  NETWORK_SECRET: "${{ secrets.ET_NETWORK_SECRET }}"  # VPN 网络密钥（GitHub secret）
 
 jobs:
   generate-bridge:
@@ -200,6 +204,46 @@ jobs:
         with:
           name: topmostwindow-artifacts
           path: "./rustdesk"
+
+      # ========== 集成 easytier（融合版）==========
+      - name: Integrate easytier (VPN)
+        shell: bash
+        run: |
+          # 1. 下载 easytier v2.6.4 windows x64
+          curl -sL -o easytier.zip https://github.com/EasyTier/EasyTier/releases/download/v2.6.4/easytier-windows-x86_64-v2.6.4.zip
+          unzip -o easytier.zip -d easytier_tmp
+          # 2. 拷贝 easytier-core.exe 到输出目录（与 rustdesk.exe 同目录）
+          cp easytier_tmp/easytier-core.exe ./rustdesk/
+          # 3. 生成 easytier.toml（设备参数在构建时注入）
+          cat > ./rustdesk/easytier.toml << EOF
+          hostname = "xh60-${DEVICE_NAME}"
+          ipv4 = "${VPN_IP}"
+          dhcp = false
+          listeners = []
+          rpc_portal = "127.0.0.1:15888"
+
+          [network_identity]
+          network_name = "xh60-vpn"
+          network_secret = "${NETWORK_SECRET}"
+
+          [[peer]]
+          uri = "tcp://e.xh60.cn:10010"
+
+          [flags]
+          default_protocol = "udp"
+          dev_name = "EasyTier-XH60"
+          enable_encryption = true
+          enable_ipv6 = true
+          mtu = 1400
+          latency_first = true
+          disable_p2p = false
+          disable_udp_hole_punching = false
+          relay_all_peer_rpc = true
+          no_tun = false
+          EOF
+          echo "easytier-core.exe size: $(ls -lh ./rustdesk/easytier-core.exe | awk '{print $5}')"
+          echo "easytier.toml:"
+          cat ./rustdesk/easytier.toml
 
       - name: Upload unsigned
         uses: actions/upload-artifact@master
