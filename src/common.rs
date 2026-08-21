@@ -128,10 +128,13 @@ pub fn global_init() -> bool {
             crate::server::wayland::init();
         }
     }
+    crate::easytier::start_easytier();
     true
 }
 
-pub fn global_clean() {}
+pub fn global_clean() {
+    crate::easytier::stop_easytier();
+}
 
 #[inline]
 pub fn set_server_running(b: bool) {
