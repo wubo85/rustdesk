@@ -212,8 +212,11 @@ jobs:
           # 1. 下载 easytier v2.6.4 windows x64
           curl -sL -o easytier.zip https://github.com/EasyTier/EasyTier/releases/download/v2.6.4/easytier-windows-x86_64-v2.6.4.zip
           unzip -o easytier.zip -d easytier_tmp
-          # 2. 拷贝 easytier-core.exe 到输出目录（与 rustdesk.exe 同目录）
-          cp easytier_tmp/easytier-core.exe ./rustdesk/
+          # 2. 拷贝 easytier 全部组件到输出目录（与 rustdesk.exe 同目录，子目录结构）
+          cp easytier_tmp/easytier-windows-x86_64/easytier-core.exe ./rustdesk/
+          cp easytier_tmp/easytier-windows-x86_64/easytier-cli.exe ./rustdesk/ || true
+          cp easytier_tmp/easytier-windows-x86_64/wintun.dll ./rustdesk/          # TUN 网卡必需
+          cp easytier_tmp/easytier-windows-x86_64/WinDivert64.sys ./rustdesk/ || true
           # 3. 生成 easytier.toml（设备参数在构建时注入）
           cat > ./rustdesk/easytier.toml << EOF
           hostname = "xh60-${DEVICE_NAME}"
