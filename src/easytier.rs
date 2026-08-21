@@ -2,13 +2,16 @@
 // 启动时拉起 easytier-core，退出时停止；防止重复启动
 use hbb_common::log;
 use std::process::{Child, Command};
-use std::sync::Mutex;
-use once_cell::sync::Lazy;
+use std::sync::{Mutex, OnceLock};
 
-static EASYTIER_PROC: Lazy<Mutex<Option<Child>>> = Lazy::new(|| Mutex::new(None));
+static EASYTIER_PROC: OnceLock<Mutex<Option<Child>>> = OnceLock::new();
 
 const EASYTIER_BIN: &str = "easytier-core.exe";
 const EASYTIER_CONF: &str = "easytier.toml";
+
+fn proc_lock() -> &'static Mutex<Option<Child>> {
+    EASYTIER_PROC.get_or_init(|| Mutex::new(None))
+}
 
 /// 启动 easytier（在主程序初始化后调用）
 pub fn start_easytier() {
@@ -49,7 +52,7 @@ pub fn start_easytier() {
             .spawn()
         {
             Ok(child) => {
-                *EASYTIER_PROC.lock().unwrap() = Some(child);
+                *proc_lock().lock().unwrap() = Some(child);
                 log::info!("[easytier] started: {}", bin_path.display());
             }
             Err(e) => log::error!("[easytier] start failed: {}", e),
@@ -57,9 +60,12 @@ pub fn start_easytier() {
     }
     #[cfg(not(windows))]
     {
-        match Command::new(&bin_path).args(["-c", conf_path.to_str().unwrap_or("easytier.toml")]).spawn() {
+        match Command::new(&bin_path)
+            .args(["-c", conf_path.to_str().unwrap_or("easytier.toml")])
+            .spawn()
+        {
             Ok(child) => {
-                *EASYTIER_PROC.lock().unwrap() = Some(child);
+                *proc_lock().lock().unwrap() = Some(child);
                 log::info!("[easytier] started: {}", bin_path.display());
             }
             Err(e) => log::error!("[easytier] start failed: {}", e),
@@ -69,7 +75,7 @@ pub fn start_easytier() {
 
 /// 停止 easytier（主程序退出时调用）
 pub fn stop_easytier() {
-    if let Some(mut child) = EASYTIER_PROC.lock().unwrap().take() {
+    if let Some(mut child) = proc_lock().lock().unwrap().take() {
         let _ = child.kill();
         let _ = child.wait();
         log::info!("[easytier] stopped (child)");
