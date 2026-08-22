@@ -615,32 +615,33 @@ class _ConnectionPageState extends State<ConnectionPage>
             Padding(
               padding: const EdgeInsets.only(top: 13.0),
               child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                // XH60-FIX: 轻量方案 - VPN 节点管理入口
-                Container(
-                  height: 28.0,
-                  margin: const EdgeInsets.only(right: 8),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Theme.of(context).dividerColor),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Tooltip(
-                    message: translate('VPN Nodes'),
-                    child: InkWell(
-                      onTap: () => _showVpnNodesDialog(context),
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 8),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.hub_outlined, size: 14),
-                            SizedBox(width: 4),
-                            Text('VPN', style: TextStyle(fontSize: 12)),
-                          ],
+                // XH60-FIX: 轻量方案 - VPN 节点管理入口（被控版用 --dart-define=VPN_UI=false 隐藏）
+                if (const bool.fromEnvironment('VPN_UI', defaultValue: true))
+                  Container(
+                    height: 28.0,
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Theme.of(context).dividerColor),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Tooltip(
+                      message: translate('VPN Nodes'),
+                      child: InkWell(
+                        onTap: () => _showVpnNodesDialog(context),
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 8),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.hub_outlined, size: 14),
+                              SizedBox(width: 4),
+                              Text('VPN', style: TextStyle(fontSize: 12)),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
                 SizedBox(
                   height: 28.0,
                   child: ElevatedButton(
