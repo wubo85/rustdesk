@@ -19,6 +19,10 @@ on:
         description: 'GitHub Release tag（独立版建议 1.4.5-mod-xh60-standalone）'
         type: string
         default: ''
+      vpn_ui:
+        description: '主控版=true（带VPN节点管理），被控版=false（隐藏VPN按钮）'
+        type: boolean
+        default: true
   push:
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+'
@@ -49,6 +53,7 @@ env:
   DEVICE_NAME: "${{ inputs.device_name || 'pc-main' }}"  # 设备名（每台客户端打包时改）
   VPN_IP: "${{ inputs.vpn_ip || '192.168.100.11' }}"      # VPN 虚拟 IP（每台客户端打包时改）
   INTEGRATE_EASYTIER: "${{ inputs.integrate_easytier != false }}"
+  EXTRA_DART_DEFINES: "${{ inputs.vpn_ui == false && '--dart-define=VPN_UI=false' || '' }}"
   NETWORK_SECRET: "${{ secrets.ET_NETWORK_SECRET }}"  # VPN 网络密钥（GitHub secret）
   # ===== Gitea 升级源（编译时注入客户端）=====
   GITEA_TOKEN: "${{ secrets.GITEA_TOKEN }}"                    # Gitea 只读 token
