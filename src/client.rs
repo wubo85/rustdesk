@@ -850,9 +850,13 @@ impl Client {
                 .await
                 .with_context(|| "Failed to connect to rendezvous server")?;
 
+            // XH60-FIX: 跳过 relay secure_tcp——开源 hbbr 不支持 KeyExchange，
+            // 等待期间对端(B)先连上中继发来的消息会被 conn.next() 消费，
+            // 导致上层等不到 peer 信息、relay 刚建立就断开（登录后连接失败根因）。
+            // 中继通道本身是客户端间端到端加密，跳过不影响安全。
             if !key.is_empty() && !token.is_empty() {
                 // mainly for the security of token
-                secure_tcp(&mut socket, key).await?;
+                // secure_tcp(&mut socket, key).await?; // XH60-FIX: 已跳过
             }
 
             ipv4 = socket.local_addr().is_ipv4();
@@ -3879,8 +3883,8 @@ async fn hc_connection_(
 
     let host = check_port(&rendezvous_server, RENDEZVOUS_PORT);
     let mut conn = connect_tcp(host.clone(), CONNECT_TIMEOUT).await?;
-    let key = crate::get_key(true).await;
-    crate::secure_tcp(&mut conn, &key).await?;
+    // XH60-FIX: 心跳连接跳过 secure_tcp（开源 hbbs 不支持 KeyExchange，
+    // 直接明文心跳，避免登录后心跳建立延迟）
     let mut msg_out = RendezvousMessage::new();
     msg_out.set_hc(HealthCheck {
         token,
