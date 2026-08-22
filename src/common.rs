@@ -956,15 +956,21 @@ pub fn check_software_update() {
 // Because the url is always `https://api.rustdesk.com/version/latest`.
 #[tokio::main(flavor = "current_thread")]
 pub async fn do_check_software_update() -> hbb_common::ResultType<()> {
-    let (request, url) =
-        hbb_common::version_check_request(hbb_common::VER_TYPE_RUSTDESK_CLIENT.to_string());
+    // XH60-FIX: 升级源指向自建 Gitea Releases（xh/rustdesk）
+    let url = option_env!("GITEA_UPDATE_URL")
+        .unwrap_or("https://fr.xh60.cn:8418/api/v1/repos/xh/rustdesk/releases/latest");
+    let token = option_env!("GITEA_TOKEN").unwrap_or("");
     let proxy_conf = Config::get_socks();
-    let tls_url = get_url_for_tls(&url, &proxy_conf);
+    let tls_url = get_url_for_tls(url, &proxy_conf);
     let tls_type = get_cached_tls_type(tls_url);
     let is_tls_not_cached = tls_type.is_none();
     let tls_type = tls_type.unwrap_or(TlsType::Rustls);
     let client = create_http_client_async(tls_type, false);
-    let latest_release_response = match client.post(&url).json(&request).send().await {
+    let mut req = client.get(url);
+    if !token.is_empty() {
+        req = req.header("Authorization", format!("token {}", token));
+    }
+    let latest_release_response = match req.send().await {
         Ok(resp) => {
             upsert_tls_cache(tls_url, tls_type, false);
             resp
@@ -973,7 +979,11 @@ pub async fn do_check_software_update() -> hbb_common::ResultType<()> {
             if is_tls_not_cached && err.is_request() {
                 let tls_type = TlsType::NativeTls;
                 let client = create_http_client_async(tls_type, false);
-                let resp = client.post(&url).json(&request).send().await?;
+                let mut req = client.get(url);
+                if !token.is_empty() {
+                    req = req.header("Authorization", format!("token {}", token));
+                }
+                let resp = req.send().await?;
                 upsert_tls_cache(tls_url, tls_type, false);
                 resp
             } else {
@@ -982,9 +992,24 @@ pub async fn do_check_software_update() -> hbb_common::ResultType<()> {
         }
     };
     let bytes = latest_release_response.bytes().await?;
-    let resp: hbb_common::VersionCheckResponse = serde_json::from_slice(&bytes)?;
-    let response_url = resp.url;
-    let latest_release_version = response_url.rsplit('/').next().unwrap_or_default();
+    // 解析 Gitea Release JSON: { tag_name, assets: [{ browser_download_url }] }
+    let release: serde_json::Value = serde_json::from_slice(&bytes)?;
+    let latest_release_version = release
+        .get("tag_name")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .trim_start_matches('v')
+        .to_owned();
+    let response_url = release
+        .get("assets")
+        .and_then(|a| a.as_array())
+        .and_then(|arr| arr.iter().find(|x| {
+            x.get("name").and_then(|n| n.as_str()).map(|n| n.ends_with(".exe")).unwrap_or(false)
+        }))
+        .and_then(|x| x.get("browser_download_url"))
+        .and_then(|u| u.as_str())
+        .unwrap_or("")
+        .to_owned();
 
     if get_version_number(&latest_release_version) > get_version_number(crate::VERSION) {
         #[cfg(feature = "flutter")]
