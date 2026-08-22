@@ -1000,40 +1000,32 @@ pub async fn do_check_software_update() -> hbb_common::ResultType<()> {
         .unwrap_or("")
         .trim_start_matches('v')
         .to_owned();
-    // 取第一个 .exe 资产（文件名 + 直链）
-    let asset = release
+    // 取第一个 .exe 资产（仅用于日志；实际文件名由 main_get_common 的 download-file- 分支硬编码）
+    let asset_name = release
         .get("assets")
         .and_then(|a| a.as_array())
         .and_then(|arr| arr.iter().find(|x| {
             x.get("name").and_then(|n| n.as_str()).map(|n| n.ends_with(".exe")).unwrap_or(false)
-        }));
-    let asset_name = asset
+        }))
         .and_then(|x| x.get("name"))
         .and_then(|n| n.as_str())
         .unwrap_or("")
         .to_owned();
-    let asset_url = asset
-        .and_then(|x| x.get("browser_download_url"))
-        .and_then(|u| u.as_str())
-        .unwrap_or("")
-        .to_owned();
     // XH60-FIX: flutter handleUpdate() 期望 release tag 页面 URL（内部 replaceAll('tag','download') 拼下载链接）
     // 官方格式: https://github.com/rustdesk/rustdesk/releases/tag/v1.4.5
-    // 我们用 Gitea tag 页面 URL，并写入 download-file-<version> 配置供 UI 读取实际文件名
+    // 下载文件名为 main_get_common 硬编码: rustdesk-<version>-x86_64.exe/.msi
+    // 因此 Gitea Release asset 必须命名为 rustdesk-<version>-x86_64.exe 才能被一键升级命中
     let response_url = format!(
         "{}/releases/tag/{}",
         option_env!("GITEA_REPO_BASE").unwrap_or("https://fr.xh60.cn:8418/xh/rustdesk"),
         latest_release_version
     );
-    if !asset_name.is_empty() {
-        LocalConfig::set_option(format!("download-file-{}", latest_release_version), asset_name);
-        log::info!(
-            "Update available: {} ({}) -> {}",
-            latest_release_version,
-            asset_name,
-            asset_url
-        );
-    }
+    log::info!(
+        "Update available: {} (asset: {}) url: {}",
+        latest_release_version,
+        asset_name,
+        response_url
+    );
 
     if get_version_number(&latest_release_version) > get_version_number(crate::VERSION) {
         #[cfg(feature = "flutter")]
