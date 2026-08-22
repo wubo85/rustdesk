@@ -49,6 +49,7 @@ env:
   # ===== Gitea 升级源（编译时注入客户端）=====
   GITEA_TOKEN: "${{ secrets.GITEA_TOKEN }}"                    # Gitea 只读 token
   GITEA_UPDATE_URL: "https://fr.xh60.cn:8418/api/v1/repos/xh/rustdesk/releases/latest"
+  GITEA_REPO_BASE: "https://fr.xh60.cn:8418/xh/rustdesk"
 
 jobs:
   generate-bridge:
