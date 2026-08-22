@@ -2,6 +2,19 @@ name: Build Windows x64 Only
 
 on:
   workflow_dispatch:
+    inputs:
+      integrate_easytier:
+        description: '集成 easytier VPN（true=融合版, false=独立版）'
+        type: boolean
+        default: true
+      device_name:
+        description: '设备名（融合版 easytier 使用）'
+        type: string
+        default: 'pc-main'
+      vpn_ip:
+        description: 'VPN 虚拟 IP（融合版 easytier 使用）'
+        type: string
+        default: '192.168.100.11'
   push:
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+'
@@ -29,8 +42,9 @@ env:
   UPLOAD_ARTIFACT: "true"
   SIGN_BASE_URL: "${{ secrets.SIGN_BASE_URL }}-2"
   # ===== easytier 融合参数（编译时注入）=====
-  DEVICE_NAME: "pc-main"                    # 设备名（每台客户端打包时改）
-  VPN_IP: "192.168.100.11"                  # VPN 虚拟 IP（每台客户端打包时改）
+  DEVICE_NAME: "${{ inputs.device_name || 'pc-main' }}"  # 设备名（每台客户端打包时改）
+  VPN_IP: "${{ inputs.vpn_ip || '192.168.100.11' }}"      # VPN 虚拟 IP（每台客户端打包时改）
+  INTEGRATE_EASYTIER: "${{ inputs.integrate_easytier != false }}"
   NETWORK_SECRET: "${{ secrets.ET_NETWORK_SECRET }}"  # VPN 网络密钥（GitHub secret）
 
 jobs:
@@ -205,8 +219,9 @@ jobs:
           name: topmostwindow-artifacts
           path: "./rustdesk"
 
-      # ========== 集成 easytier（融合版）==========
+      # ========== 集成 easytier（融合版，workflow_dispatch 可关闭）==========
       - name: Integrate easytier (VPN)
+        if: env.INTEGRATE_EASYTIER == 'true'
         shell: bash
         run: |
           # 1. 下载 easytier v2.6.4 windows x64
