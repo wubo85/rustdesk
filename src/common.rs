@@ -1662,8 +1662,11 @@ pub async fn secure_tcp(conn: &mut Stream, key: &str) -> ResultType<()> {
     let Some(rs_pk) = rs_pk else {
         bail!("Handshake failed: invalid public key from rendezvous server");
     };
-    match timeout(READ_TIMEOUT, conn.next()).await? {
-        Some(Ok(bytes)) => {
+    // XH60-FIX: 开源 hbbs 不支持 KeyExchange 握手（secure_tcp 是 Pro 功能），
+    // 超时/无响应时降级为明文连接继续，不中断（与 API Token 共存）。
+    // 若对端为 Pro 服务器仍正常完成握手加密。
+    if let Ok(res) = timeout(READ_TIMEOUT, conn.next()).await {
+        if let Some(Ok(bytes)) = res {
             if let Ok(msg_in) = RendezvousMessage::parse_from_bytes(&bytes) {
                 match msg_in.union {
                     Some(rendezvous_message::Union::KeyExchange(ex)) => {
@@ -1689,7 +1692,6 @@ pub async fn secure_tcp(conn: &mut Stream, key: &str) -> ResultType<()> {
                 }
             }
         }
-        _ => {}
     }
     Ok(())
 }
