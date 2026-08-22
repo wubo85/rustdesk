@@ -230,7 +230,7 @@ jobs:
           network_secret = "99688188"
 
           [[peer]]
-          uri = "tcp://120.25.75.214:11010"
+          uri = "tcp://e.xh60.cn:11010"
 
           [flags]
           default_protocol = "udp"
