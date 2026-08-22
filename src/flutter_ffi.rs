@@ -2768,6 +2768,9 @@ pub fn main_get_common(key: String) -> String {
                     format!("error:{}", e)
                 }
             }
+        } else if key == "vpn-nodes" {
+            // XH60-FIX: 轻量方案 - 主控端节点列表（easytier-cli peer）
+            crate::easytier::get_vpn_nodes_json()
         } else if key.starts_with("download-file-") {
             let _version = key.replace("download-file-", "");
             #[cfg(target_os = "windows")]
