@@ -1691,6 +1691,11 @@ pub fn check_process(arg: &str, mut same_uid: bool) -> bool {
     false
 }
 
+/// XH60-FIX: secure_tcp 握手等待超时（毫秒）
+/// 开源 hbbs 不支持 KeyExchange（Pro 功能），等待 READ_TIMEOUT(18s) 太慢，
+/// 登录通讯录后会卡"连接中"；Pro 服务器握手立即响应，3 秒足够。
+const SECURE_TCP_TIMEOUT: u64 = 3_000;
+
 pub async fn secure_tcp(conn: &mut Stream, key: &str) -> ResultType<()> {
     // Skip additional encryption when using WebSocket connections (wss://)
     // as WebSocket Secure (wss://) already provides transport layer encryption.
@@ -1706,7 +1711,7 @@ pub async fn secure_tcp(conn: &mut Stream, key: &str) -> ResultType<()> {
     // XH60-FIX: 开源 hbbs 不支持 KeyExchange 握手（secure_tcp 是 Pro 功能），
     // 超时/无响应时降级为明文连接继续，不中断（与 API Token 共存）。
     // 若对端为 Pro 服务器仍正常完成握手加密。
-    if let Ok(res) = timeout(READ_TIMEOUT, conn.next()).await {
+    if let Ok(res) = timeout(SECURE_TCP_TIMEOUT, conn.next()).await {
         if let Some(Ok(bytes)) = res {
             if let Ok(msg_in) = RendezvousMessage::parse_from_bytes(&bytes) {
                 match msg_in.union {
