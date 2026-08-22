@@ -338,6 +338,106 @@ class _ConnectionPageState extends State<ConnectionPage>
         isTerminal: isTerminal);
   }
 
+  /// XH60-FIX: 轻量方案 - 显示 VPN 在线节点列表弹窗，点击一键连接
+  void _showVpnNodesDialog(BuildContext context) async {
+    // 调 rust 侧 easytier-cli peer 解析的 JSON
+    final raw = bind.mainGetCommonSync(key: 'vpn-nodes');
+    List<dynamic> nodes = [];
+    if (raw.startsWith('[')) {
+      try {
+        nodes = jsonDecode(raw) as List<dynamic>;
+      } catch (_) {
+        nodes = [];
+      }
+    }
+    if (nodes.isEmpty) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(translate('VPN Nodes')),
+          content: Text(raw.startsWith('error:')
+              ? translate('VPN service not available')
+              : translate('No VPN nodes online')),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text(translate('OK'))),
+          ],
+        ),
+      );
+      return;
+    }
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        child: Container(
+          width: 380,
+          constraints: const BoxConstraints(maxHeight: 420),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Text(translate('VPN Nodes'),
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold)),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: nodes.length,
+                  itemBuilder: (ctx, i) {
+                    final n = nodes[i] as Map<String, dynamic>;
+                    final ip = (n['ipv4'] ?? '').toString();
+                    final host = (n['hostname'] ?? '').toString();
+                    final cost = (n['cost'] ?? '').toString();
+                    final lat = (n['lat'] ?? '').toString();
+                    return ListTile(
+                      dense: true,
+                      leading: Icon(
+                          cost == 'Local' ? Icons.lan : Icons.devices,
+                          size: 20),
+                      title: Text(
+                          '$host  ($ip)',
+                          style: const TextStyle(fontSize: 13)),
+                      subtitle: Text('$cost · ${lat}ms',
+                          style: const TextStyle(fontSize: 11)),
+                      trailing: const Icon(Icons.call, size: 16),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        if (ip.isNotEmpty) {
+                          // 填入 VPN IP 并发起直连（direct-server=Y, 21118）
+                          _idController.id = ip;
+                          _idEditingController.text = ip;
+                          _idEditingController.selection =
+                              TextSelection.collapsed(offset: ip.length);
+                          onConnect();
+                        }
+                      },
+                    );
+                  },
+                ),
+              ),
+              const Divider(height: 1),
+              Padding(
+                padding: const EdgeInsets.all(8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: Text(translate('Close'))),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   /// UI for the remote ID TextField.
   /// Search for a peer.
   Widget _buildRemoteIDTextField(BuildContext context) {
@@ -515,6 +615,32 @@ class _ConnectionPageState extends State<ConnectionPage>
             Padding(
               padding: const EdgeInsets.only(top: 13.0),
               child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                // XH60-FIX: 轻量方案 - VPN 节点管理入口
+                Container(
+                  height: 28.0,
+                  margin: const EdgeInsets.only(right: 8),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Theme.of(context).dividerColor),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Tooltip(
+                    message: translate('VPN Nodes'),
+                    child: InkWell(
+                      onTap: () => _showVpnNodesDialog(context),
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 8),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.hub_outlined, size: 14),
+                            SizedBox(width: 4),
+                            Text('VPN', style: TextStyle(fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
                 SizedBox(
                   height: 28.0,
                   child: ElevatedButton(
