@@ -226,11 +226,11 @@ jobs:
           rpc_portal = "127.0.0.1:15888"
 
           [network_identity]
-          network_name = "xh60-vpn"
-          network_secret = "${NETWORK_SECRET}"
+          network_name = "xh60.cn"
+          network_secret = "99688188"
 
           [[peer]]
-          uri = "tcp://e.xh60.cn:10010"
+          uri = "tcp://120.25.75.214:11010"
 
           [flags]
           default_protocol = "udp"
