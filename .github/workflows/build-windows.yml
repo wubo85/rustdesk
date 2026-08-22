@@ -15,6 +15,10 @@ on:
         description: 'VPN 虚拟 IP（融合版 easytier 使用）'
         type: string
         default: '192.168.100.11'
+      release_tag:
+        description: 'GitHub Release tag（独立版建议 1.4.5-mod-xh60-standalone）'
+        type: string
+        default: ''
   push:
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+'
@@ -31,7 +35,7 @@ env:
   FLUTTER_VERSION: "3.24.5"
   ANDROID_FLUTTER_VERSION: "3.24.5"
   FLUTTER_ELINUX_VERSION: "3.16.9"
-  TAG_NAME: "${{ github.ref_name }}"
+  TAG_NAME: "${{ inputs.release_tag || github.ref_name }}"
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
   VCPKG_COMMIT_ID: "120deac3062162151622ca4860575a33844ba10b"
   ARMV7_VCPKG_COMMIT_ID: "6f29f12e82a8293156836ad81cc9bf5af41fe836"
