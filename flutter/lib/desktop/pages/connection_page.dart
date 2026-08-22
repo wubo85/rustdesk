@@ -369,8 +369,9 @@ class _ConnectionPageState extends State<ConnectionPage>
     }
     showDialog(
       context: context,
-      builder: (ctx) => Dialog(
-        child: Container(
+      builder: (ctx) => AlertDialog(
+        contentPadding: EdgeInsets.zero,
+        content: Container(
           width: 380,
           constraints: const BoxConstraints(maxHeight: 420),
           child: Column(
