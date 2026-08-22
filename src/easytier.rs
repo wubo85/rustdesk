@@ -106,3 +106,71 @@ fn is_easytier_running() -> bool {
         false
     }
 }
+
+
+/// XH60-FIX: 轻量方案 - 获取 VPN 在线节点列表（调用 easytier-cli peer，解析为 JSON）
+/// 返回格式: [{"ipv4":"192.168.100.12","hostname":"yyt","cost":"p2p","lat":"5.92","tunnel":"tcp"}, ...]
+pub fn get_vpn_nodes_json() -> String {
+    use std::process::Command;
+    let exe_dir = match std::env::current_exe() {
+        Ok(p) => p.parent().map(|d| d.to_path_buf()).unwrap_or_default(),
+        Err(_) => return "error:no-exe-dir".to_owned(),
+    };
+    let cli_path = exe_dir.join("easytier-cli.exe");
+    if !cli_path.exists() {
+        log::info!("[vpn-nodes] easytier-cli.exe not found, standalone version");
+        return "[]".to_owned();
+    }
+    let out = match Command::new(&cli_path).args(["peer"]).output() {
+        Ok(o) => o,
+        Err(e) => {
+            log::error!("[vpn-nodes] run easytier-cli failed: {}", e);
+            return "error:cli-failed".to_owned();
+        }
+    };
+    let text = String::from_utf8_lossy(&out.stdout).to_string();
+    parse_peer_table(&text)
+}
+
+/// 解析 easytier-cli peer 的表格输出为 JSON 数组
+fn parse_peer_table(text: &str) -> String {
+    let mut nodes: Vec<serde_json::Value> = Vec::new();
+    for line in text.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('|') == false {
+            continue;
+        }
+        // 跳过表头与分隔行
+        if line.contains("ipv4") && line.contains("hostname") {
+            continue;
+        }
+        if line.contains("-----") {
+            continue;
+        }
+        // 解析 | ip | host | cost | lat | loss | rx | tx | tunnel | NAT | version |
+        let cells: Vec<&str> = line
+            .trim_matches('|')
+            .split('|')
+            .map(|s| s.trim())
+            .collect();
+        if cells.len() < 4 {
+            continue;
+        }
+        let ipv4 = cells[0].trim_end_matches("/24").to_string();
+        let hostname = cells[1].to_string();
+        let cost = cells[2].to_string();
+        let lat = cells[3].to_string();
+        let tunnel = cells.get(7).map(|s| s.to_string()).unwrap_or_default();
+        if ipv4.is_empty() || hostname.is_empty() {
+            continue;
+        }
+        nodes.push(serde_json::json!({
+            "ipv4": ipv4,
+            "hostname": hostname,
+            "cost": cost,
+            "lat": lat,
+            "tunnel": tunnel,
+        }));
+    }
+    serde_json::to_string(&nodes).unwrap_or_else(|_| "[]".to_owned())
+}
