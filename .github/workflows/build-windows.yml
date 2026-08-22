@@ -240,6 +240,9 @@ jobs:
           cp easytier_tmp/easytier-windows-x86_64/easytier-cli.exe ./rustdesk/ || true
           cp easytier_tmp/easytier-windows-x86_64/wintun.dll ./rustdesk/          # TUN 网卡必需
           cp easytier_tmp/easytier-windows-x86_64/WinDivert64.sys ./rustdesk/ || true
+          # XH60-FIX: easytier-core.exe 依赖 pnet(winpcap) → packet.dll，必须随包拷贝（缺失报 packet.dll 错误）
+          cp easytier_tmp/easytier-windows-x86_64/Packet.dll ./rustdesk/ || true
+          ls -la ./rustdesk/ | grep -i -E 'easytier|packet|wintun|windivert'
           # 3. 生成 easytier.toml（设备参数在构建时注入）
           cat > ./rustdesk/easytier.toml << EOF
           hostname = "xh60-${DEVICE_NAME}"
